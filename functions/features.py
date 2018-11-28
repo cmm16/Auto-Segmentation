@@ -109,8 +109,7 @@ class BasisTransformer(BaseEstimator, TransformerMixin):
             warnings.filterwarnings("ignore")
             img_rescale = exposure.rescale_intensity(
                 image, in_range=(low, high))
-            equalize_hist = np.array([exposure.equalize_adapthist(
-                slice, clip_limit=self.equalize_hist_clip_limit) for slice in image])
+
 
         dilate = cv2.dilate(
             image, self.dialation_kernel, iterations=self.dialation_iters)
@@ -121,66 +120,7 @@ class BasisTransformer(BaseEstimator, TransformerMixin):
         new_image[:, :, :, 1] = bilateral
         # 3th dimension is the rescaled image
         new_image[:, :, :, 2] = img_rescale
-        # 4th dimension is the result of a adaptive histogram
-        new_image[:, :, :, 3] = equalize_hist
-        # 5th dimension is a dialation
-        new_image[:, :, :, 4] = dilate
+        # 4th dimension is a dialation
+        new_image[:, :, :, 3] = dilate
 
         return np.nan_to_num(new_image)
-
-
-def extend_features(x_feat, sgd, pa):
-    """
-    Given features to feed into an SGD or PA regressor, stacks the
-    predictions and returns the extended features.
-    :param x_feat: N x X x Y x C array
-    :param sgd: A MiniBatchRegressor with an SGDRegressor at its core
-    :param pa: A MiniBatchRegressor with an PassiveAggressiveRegressor at its
-    core
-    :return: N x X x Y x (C + 2) array
-    """
-
-    #   Predict and add 4th dimension for stacking
-    x_sgd = sgd.predict(x_feat)[:, :, :, np.newaxis]
-    x_pa = pa.predict(x_feat)[:, :, :, np.newaxis]
-
-    x_extended = np.concatenate([x_feat, x_sgd, x_pa], axis=3)
-
-    return x_extended
-
-
-def transform_images(feature, labels=None):
-    transformer = BasisTransformer()
-    x_test_transformed = transformer.fit_transform(
-        np.expand_dims(x_test_preprocessed, axis=3))
-    x_test_flat = np.nan_to_num(x_test_transformed).reshape(
-        (-1, x_test_transformed.shape[-1]))
-    weights = np.load('../weights/linear_pipeline_regressor_weights.npz')
-    sgd_regressor = MiniBatchRegressor(
-        regressor=SGDRegressor(
-            penalty='elasticnet', l1_ratio=0.11, max_iter=5, tol=None),
-        batch_size=1000,
-        num_iters=50000)
-    #this is so we can call predict
-    sgd_regressor.fit(np.zeros((1, 8)), np.zeros((1, 1)).ravel())
-    sgd_regressor.regressor.coef_ = weights["sgd"]
-    pa_regressor = MiniBatchRegressor(
-        regressor=PassiveAggressiveRegressor(C=.2, max_iter=5, tol=None),
-        batch_size=1000,
-        num_iters=1000)
-    #this is so we can call predict
-    pa_regressor.fit(np.zeros((1, 8)), np.zeros((1, 1)).ravel())
-    pa_regressor.regressor.coef_ = weights["pa"]
-    x_test_extended = np.zeros((len(x_test), 256, 256,
-                                x_test_transformed.shape[3] + 2))
-    x_test_extended = np.zeros((*x_test_transformed.shape[:3],
-                                x_test_transformed.shape[3] + 2))
-    x_test_extended[:, :, :, :x_test_transformed.shape[3]] = x_test_transformed
-    x_test_extended[:, :, :, x_test_transformed.shape[
-        3]] = sgd_regressor.predict(x_test_transformed)
-    x_test_extended[:, :, :, x_test_transformed.shape[3] +
-                    1] = pa_regressor.predict(x_test_transformed)
-    return x_test_extended
-
-
-FeatureTransformer = FunctionTransformer(transform_images)

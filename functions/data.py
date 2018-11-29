@@ -10,7 +10,7 @@ def load_data(directory):
     x = []
     y = []
     fnames = listdir(directory + '/x/')
-    for i in tqdm(range(0, len(fnames), 50)):
+    for i in tqdm(range(len(fnames))):
         f = fnames[i]
         x.append(cv2.imread(join(directory + '/x/' , f)))
         y.append(ndimage.imread(join(directory + '/y/', f)))

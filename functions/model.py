@@ -1,3 +1,4 @@
+#kaggle source - https://www.depends-on-the-definition.com/unet-keras-segmenting-images/
 import tensorflow as tf
 
 from keras.models import Model, load_model
@@ -10,7 +11,7 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.optimizers import Adam
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 
-def conv2d_block(input_tensor, n_filters, kernel_size=3, batchnorm=False):
+def conv2d_block(input_tensor, n_filters, kernel_size=3, batchnorm=True):
     # first layer
     x = Conv2D(filters=n_filters, kernel_size=(kernel_size, kernel_size), kernel_initializer="he_normal",
                padding="same")(input_tensor)
@@ -21,7 +22,7 @@ def conv2d_block(input_tensor, n_filters, kernel_size=3, batchnorm=False):
     x = Activation("relu")(x)
     return x
 
-def get_unet(input_shape, n_filters=16, dropout=0.5, batchnorm=False):
+def get_unet(input_shape, n_filters=16, dropout=0.5, batchnorm=True):
 
     input_img = Input(input_shape, name='img')
 

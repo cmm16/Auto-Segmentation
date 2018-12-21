@@ -91,12 +91,15 @@ class BasisTransformer(BaseEstimator, TransformerMixin):
         :return: the image features
         """
 
-        num_features = 5
+        num_features = 8
         IMG_MAX = 255.0
 
         uint8_image = (image * IMG_MAX).astype('uint8')
 
-        new_image = np.zeros((*image.shape[:3], num_features))
+        new_image = np.zeros((*image.shape[:2], num_features))
+        new_image[:, :, :3] = image
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
 
         bilateral = np.array([cv2.bilateralFilter(slice, self.bilateral_d,
                                         self.bilateral_sigma_color,
@@ -114,13 +117,8 @@ class BasisTransformer(BaseEstimator, TransformerMixin):
         dilate = cv2.dilate(
             image, self.dialation_kernel, iterations=self.dialation_iters)
 
-        # First dimension are original color space.
-        new_image[:, :, :, 0] = image
-        # 2rd dimension is the result of a bilateral filtering
-        new_image[:, :, :, 1] = bilateral
-        # 3th dimension is the rescaled image
-        new_image[:, :, :, 2] = img_rescale
-        # 4th dimension is a dialation
-        new_image[:, :, :, 3] = dilate
+        new_image[:, :, 3:6] = bilateral
+        new_image[:, :, 6] = img_rescale
+        new_image[:, :, 7] = dilate
 
         return np.nan_to_num(new_image)
